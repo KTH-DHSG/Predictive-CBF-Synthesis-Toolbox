@@ -40,7 +40,7 @@ The repository contains the following subfolders:
 How to get started
 ==================
 
-The examples in the example-folder provide a good starting point to get acquainted with the functionalities provided. For details, refer to the file README_EXAMPLES.txt
+The examples in the folder "Examples" provide a good starting point to get acquainted with the functionalities provided. For details, refer to the file README_EXAMPLES.txt
 
 
 Further documentation
