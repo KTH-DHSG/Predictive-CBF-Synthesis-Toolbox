@@ -1,0 +1,48 @@
+{
+    "x_dim": 3,
+    "u_dim": 2,
+    "t0": 0,
+    "t": 0,
+    "dt": null,
+    "x0": [
+        0,
+        0,
+        0
+    ],
+    "x": [
+        0,
+        0,
+        0
+    ],
+    "u_min": [
+        1.0,
+        -0.3490658503988659
+    ],
+    "u_max": [
+        2.0,
+        0.3490658503988659
+    ],
+    "x_sol": [
+        [
+            0.0,
+            0.0,
+            0.0
+        ]
+    ],
+    "u_sol": [],
+    "t_sol": [
+        0
+    ],
+    "f_attr": {
+        "type": "function",
+        "name": "f",
+        "source": "def f(self, x, u):\n    \"\"\"Implementation of the kinematic bicycle model using casadi data types.\n\n    Args:\n        x (casadi.MX with length 3): current state\n        u (casadi.MX with length 2): control input\n\n    Returns:\n        casadi.MX: time derivative of system state\n    \"\"\"\n    beta = ca.atan(0.5 * ca.tan(u[1]))\n    x_dot1 = u[0] * ca.cos(x[2] + beta)\n    x_dot2 = u[0] * ca.sin(x[2] + beta)\n    x_dot3 = u[0] * ca.cos(beta) * ca.tan(u[1]) / self.L\n    x_dot = ca.vertcat(x_dot1, x_dot2, x_dot3)\n\n    return x_dot\n"
+    },
+    "str_attr": {
+        "type": "function",
+        "name": "__str__",
+        "source": "def __str__(self):\n    str = \"Kinematic Bicycle Model\"\n    return str\n"
+    },
+    "L": 1,
+    "turning_radius": 2.7926031172390093
+}

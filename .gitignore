@@ -1,0 +1,21 @@
+*.pyc
+__pycache__/
+.vscode/
+frames_*/
+
+
+# Ignore film files
+*.gif
+*.mp4
+*.avi
+*.mov
+
+# Ignore PNG and JPG image files
+*.png
+*.jpg
+
+# Except keep mp4 files inside these folders:
+!Examples/B1/*.mp4
+!Examples/S1/*.mp4
+!Examples/SC/*.mp4
+!Examples/U1/*.mp4

@@ -1,0 +1,43 @@
+{
+    "x_dim": 2,
+    "u_dim": 2,
+    "t0": 0,
+    "t": 0,
+    "dt": null,
+    "x0": [
+        0,
+        0
+    ],
+    "x": [
+        0,
+        0
+    ],
+    "u_min": [
+        1,
+        -2
+    ],
+    "u_max": [
+        2,
+        2
+    ],
+    "x_sol": [
+        [
+            0.0,
+            0.0
+        ]
+    ],
+    "u_sol": [],
+    "t_sol": [
+        0
+    ],
+    "f_attr": {
+        "type": "function",
+        "name": "f",
+        "source": "def f(self, x, u):\n    \"\"\"Implementation of the single integrator dynamics using casadi data types.\n\n    Args:\n        x (casadi.MX or casadi.SX): current state\n        u (casadi.MX or casadi.SX): control input\n\n    Returns:\n        casadi.MX or casadi.SX: time derivative of system state\n    \"\"\"\n    return u\n"
+    },
+    "str_attr": {
+        "type": "function",
+        "name": "__str__",
+        "source": "def __str__(self):\n    str = \"Single Integrator\"\n    return str\n"
+    }
+}
