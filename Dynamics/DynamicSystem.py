@@ -172,7 +172,8 @@ class DynamicSystem(ABC):
         if u is None:
             raise ValueError("Control input u must be specified")
         
-        N = u.shape[1]
+        if u.ndim == 1:
+            u = u.reshape((1, -1))
 
         # simulate system
         stateTrajectory = ca.DM.zeros((self.x_dim, N+1))
