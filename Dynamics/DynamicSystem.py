@@ -175,6 +175,8 @@ class DynamicSystem(ABC):
         if u.ndim == 1:
             u = u.reshape((1, -1))
 
+        N = u.shape[1]  # number of time steps
+
         # simulate system
         stateTrajectory = ca.DM.zeros((self.x_dim, N+1))
         timeTrajectory = ca.DM.zeros(N+1)
