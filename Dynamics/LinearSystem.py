@@ -26,15 +26,12 @@ class LinearSystem(DynamicSystem):
             u_min (NumPy array of with length u_dim): lower bound input constraint; Default is -inf with corresponding dimension
             u_max (NumPy array of with length u_dim): upper bound input constraint; Default is inf with corresponding dimension
         """
-        
-        self.A = A
-        self.B = B
 
         x_dim = A.shape[0]
         u_dim = B.shape[1]
 
         if x0 is None:
-            x0 = np.zeros((x_dim,))
+            x0 = np.zeros(x_dim)
 
         if u_min is None:
             u_min = np.full((u_dim,), -np.inf)
@@ -47,7 +44,10 @@ class LinearSystem(DynamicSystem):
             super().__init__(x0,x_dim,u_dim,u_min,u_max)
         else:
             # empty initialization of instance, can be used e.g. for loading data from a file
-            pass            
+            pass     
+
+        self.A = A
+        self.B = B      
     
     def f(self, x, u):
         """Implementation of the single integrator dynamics using casadi data types.
@@ -59,6 +59,7 @@ class LinearSystem(DynamicSystem):
         Returns:
             casadi.MX or casadi.SX: time derivative of system state
         """
+
         return ca.mtimes(self.A, x) + ca.mtimes(self.B, u)
     
     def __str__(self):
