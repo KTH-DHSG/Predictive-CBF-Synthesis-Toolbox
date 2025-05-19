@@ -319,7 +319,7 @@ print("Creating movie...")
 
 import imageio.v2 as imageio
 
-frames_dir = "frames_s13"
+frames_dir = "frames_s13_1"
 os.makedirs(frames_dir, exist_ok=True)
 
 frames = []

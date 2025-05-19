@@ -8,11 +8,13 @@
 
 import numpy as np
 from scipy.optimize import minimize
-from Auxiliaries.auxiliary_math import approximate_gradient, isPointWithinDomain
+from scipy.interpolate import RegularGridInterpolator
+from Dynamics.DynamicSystem import DynamicSystem
+from Auxiliaries.auxiliary_math import approximate_directional_gradient, approximate_gradient, isPointWithinDomain
 from Auxiliaries.colored_warnings import colorWarning
 import casadi as ca
 
-def compute_safe_input(controller_settings,t,x,u_baseline,P=None):
+def compute_safe_input(controller_settings,t,x,u_baseline,P=None, method='trust-constr'):
     """
     Compute a safe control input based on the given controller settings and current state. The safe control input is computed by solving an optimization problem that minimizes the distance to the baseline control input while satisfying the control barrier function (CBF) and lambda conditions. If the point is within the domain, a safe control input is computed. Otherwise, the baseline control input is returned, as the system can be assumed to be sufficiently remote to the boundary of the safe set. 
 
@@ -98,14 +100,14 @@ def compute_safe_input(controller_settings,t,x,u_baseline,P=None):
 
         alpha_val = alpha(b_val)
 
-
-        ###############################################################################################
         # Compute the safe input
         obj = lambda u: np.dot(P@(u-u_baseline),u-u_baseline)
         const = {'type':'ineq', 'fun': lambda u_tmp: np.dot(cbf_gradient, dynamics.f(x,u_tmp)) + b_dt_val + alpha_val - alpha_offset}
 
+
         try:
             # Safe input computation with fallback to baseline controller
+            # result = minimize(obj,u_baseline,constraints=const,bounds=bounds,method=method)
             result = minimize(obj,0*u_baseline,constraints=const,bounds=bounds)
             u_safe = result.x
         except:

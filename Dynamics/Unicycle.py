@@ -12,6 +12,7 @@
 
 import numpy as np
 from Dynamics.DynamicSystem import DynamicSystem
+from Auxiliaries import auxiliary_math as aux_math
 import casadi as ca
 
 class Unicycle(DynamicSystem):

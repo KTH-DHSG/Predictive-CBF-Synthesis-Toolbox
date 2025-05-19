@@ -30,19 +30,7 @@ class CBFmodule:
     This includes the CBF itself, the dynamic system, the state constraint, the terminal constraint, 
     the prediction horizon, and the CBF design parameter."""
 
-    def __init__(self,
-                 h=None,
-                 dynamicSystem=None,
-                 cf=None,
-                 T=None,
-                 N=None,
-                 gamma=None,
-                 domain_lower_bound=None,
-                 domain_upper_bound=None,
-                 discretization=None,
-                 p_norm=50,
-                 p_norm_decrement=10,
-                 p_norm_min=20):
+    def __init__(self,h=None,dynamicSystem=None,cf=None,T=None,N=None,gamma=None,domain_lower_bound=None,domain_upper_bound=None,discretization=None,p_norm=50,p_norm_decrement=10,p_norm_min=20):
         """Summarizes all specifications for the computation of a CBF.
 
         Args:
@@ -224,9 +212,7 @@ class CBFmodule:
         # Check if the warm start input trajectories have the correct shape
         # Required shape: (number of trajectories, u_dim, N)
         if warmStartInputTrajectories is not None and any(warmStartInputTrajectories[k].shape != (self.dynamics.u_dim, self.N) for k in range(warmStartInputTrajectories.shape[0])):
-            shapes_list = [str(warmStartInputTrajectories[k].shape) for k in range(warmStartInputTrajectories.shape[0])]
-            shapes_str = ', '.join(shapes_list)
-            raise ValueError(f"The shape of the warm start input trajectories does not match the expected shape. The expected shape is ({self.dynamics.u_dim}, {self.N}), whereas the provided shapes are: {shapes_str}.")
+            raise ValueError("The shape of the warm start input trajectories does not match the expected shape.")
 
         # Generate warm start input trajectories if not provided
         if warmStartInputTrajectories is None:

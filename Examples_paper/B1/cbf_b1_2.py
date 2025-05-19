@@ -24,8 +24,7 @@ if __name__ == '__main__':
     import time
 
     ########################################################################################
-    # Specify the system dynamics, the CBF computation parameters, and initialize the CBF module
-
+    
     # some parameters
     num_of_batches_factor = 40      # determines the number of batches for parallel computation
     cbf_file_name = "b1_2_cbfm_1p12.json"

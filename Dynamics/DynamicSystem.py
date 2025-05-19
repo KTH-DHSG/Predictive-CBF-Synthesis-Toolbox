@@ -13,6 +13,7 @@
 
 from abc import ABC, abstractmethod
 import numpy as np
+from scipy.integrate import solve_ivp
 import Auxiliaries.auxiliary as aux
 import casadi as ca
 import json
@@ -172,10 +173,7 @@ class DynamicSystem(ABC):
         if u is None:
             raise ValueError("Control input u must be specified")
         
-        if u.ndim == 1:
-            u = u.reshape((1, -1))
-
-        N = u.shape[1]  # number of time steps
+        N = u.shape[1]
 
         # simulate system
         stateTrajectory = ca.DM.zeros((self.x_dim, N+1))

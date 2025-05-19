@@ -13,7 +13,6 @@
 import numpy as np
 from Dynamics.DynamicSystem import DynamicSystem
 import casadi as ca
-import numpy as np
 
 class GenericDynamicSystem(DynamicSystem):
     """

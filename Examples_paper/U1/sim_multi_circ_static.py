@@ -1,4 +1,5 @@
 """
+
     Simulation of the unicycle system in a multi-circular environment with static obstacles.
 
     The simulation is performed using the SafeController module and the CBF module. 
@@ -227,7 +228,7 @@ print("Creating movie...")
 
 import imageio.v2 as imageio
 
-frames_dir = "frames_u123"
+frames_dir = "frames_u124"
 os.makedirs(frames_dir, exist_ok=True)
 
 frames = []

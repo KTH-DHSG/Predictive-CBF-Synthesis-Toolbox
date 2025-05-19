@@ -109,7 +109,7 @@ controller_settings_s1['cbf_interpolator'] = cbf_interpolator_s1
 controller_settings_s1['alpha'] = lambda b: alpha(b, c=2, gamma=sintegrator_cbf_module_s1.gamma)
 controller_settings_s1['alpha_offset'] = 0.2
 controller_settings_s1['dynamics'] = my_sintegrator_s1
-controller_settings_s1['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/20) - 0.5)
+controller_settings_s1['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/15) - 0.5)
 controller_settings_s1['dt'] = 0.5
 controller_settings_s1['step_size'] = 0.5
 
@@ -123,7 +123,7 @@ controller_settings_s2['cbf_interpolator'] = cbf_interpolator_s2
 controller_settings_s2['alpha'] = lambda b: alpha(b, c=2, gamma=sintegrator_cbf_module_s2.gamma)
 controller_settings_s2['alpha_offset'] = 0.2
 controller_settings_s2['dynamics'] = my_sintegrator_s2
-controller_settings_s2['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/20) - 0.5) 
+controller_settings_s2['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/15) - 0.5) 
 controller_settings_s2['dt'] = 0.5
 controller_settings_s2['step_size'] = 0.5
 

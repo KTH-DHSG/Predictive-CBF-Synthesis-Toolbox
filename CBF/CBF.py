@@ -21,11 +21,7 @@ import operator
 class CBF:
     """Class for storing values of a CBF on a grid. The grid is defined by a domain and a discretization."""
     
-    def __init__(self,
-                 domain_lower_bound=None,
-                 domain_upper_bound=None,
-                 discretization=None,
-                 domain=None):
+    def __init__(self,domain_lower_bound=None,domain_upper_bound=None,discretization=None,domain=None):
         """Constructor creates a uniform grid from domain bounds using the given discretization. 
         None of the entries of the points on the grid exceed the specified bounds. The grid points are computed by 
         incrementing the entries starting with the values specified in domian_lower_bound.

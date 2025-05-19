@@ -12,7 +12,7 @@ import numpy as np
 
 def approximate_gradient(function, x, h=1e-5):
     """
-    Approximates the gradient of an interpolated function at a given point.
+    Approximates the gradient of an interpolated function at a given point using central differences.
 
     Parameters:
     - function: RegularGridInterpolator object
@@ -143,3 +143,33 @@ def sigmoid(t):
     sigmoid = np.exp(t)/(1+np.exp(t))
 
     return sigmoid
+
+
+########################################################################################
+# Test the functions
+
+# if __name__ == "__main__":
+
+#     import sys
+#     import os
+
+#     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+#     from Dynamics.Bicycle import Bicycle
+#     from CBF.CBFmodule import CBFmodule
+
+#     test_point = np.array([-3,0,0])
+#     test_input = np.array([2,0.5])
+
+
+#     cbf_module_filename = "2025-02-11_21-51-13_bicycle_example_1_cbf_module_finer_grid_1.json"
+#     cbf_module_folder_path = r'Examples\Bicycle_1\Data'
+
+#     bicycle_cbf_module = CBFmodule()
+#     bicycle_cbf_module.load(cbf_module_filename, cbf_module_folder_path)
+
+#     cbf_interpolator = bicycle_cbf_module.cbf.getCbfInterpolator()
+
+#     my_bicycle = bicycle_cbf_module.dynamics
+
+#     print(approximate_directional_gradient(cbf_interpolator,test_point,test_input,my_bicycle,step_size=0.1))

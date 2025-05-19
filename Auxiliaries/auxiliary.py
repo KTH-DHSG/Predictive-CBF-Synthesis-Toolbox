@@ -9,9 +9,11 @@
 import inspect
 import json
 import math
+import casadi as ca
 import casadi as casadi
 import textwrap
 import types
+import sys
 
 import numpy as np
 

@@ -145,7 +145,7 @@ controller_settings_d['cbf_interpolator'] = cbf_interpolator_d
 controller_settings_d['alpha'] = lambda b: alpha(b, c=0.5, gamma=dintegrator_cbf_module_d.gamma)
 controller_settings_d['alpha_offset'] = 0.2
 controller_settings_d['dynamics'] = my_dintegrator
-controller_settings_d['lambda_fun'] = lambda t: 0 
+controller_settings_d['lambda_fun'] = lambda t: 0 # 2*aux_math.sigmoid(t/6)
 controller_settings_d['dt'] = 0.1
 controller_settings_d['step_size'] = 0.5
 
