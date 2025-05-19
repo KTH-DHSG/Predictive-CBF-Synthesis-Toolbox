@@ -173,6 +173,10 @@ class DynamicSystem(ABC):
         if u is None:
             raise ValueError("Control input u must be specified")
         
+        # check if u has the correct shape
+        if u.ndim() < 2:
+            u = u.reshape(-1,1)
+        
         N = u.shape[1]
 
         # simulate system
