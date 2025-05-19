@@ -224,7 +224,9 @@ class CBFmodule:
         # Check if the warm start input trajectories have the correct shape
         # Required shape: (number of trajectories, u_dim, N)
         if warmStartInputTrajectories is not None and any(warmStartInputTrajectories[k].shape != (self.dynamics.u_dim, self.N) for k in range(warmStartInputTrajectories.shape[0])):
-            raise ValueError("The shape of the warm start input trajectories does not match the expected shape.")
+            shapes_list = [str(warmStartInputTrajectories[k].shape) for k in range(warmStartInputTrajectories.shape[0])]
+            shapes_str = ', '.join(shapes_list)
+            raise ValueError(f"The shape of the warm start input trajectories does not match the expected shape. The expected shape is ({self.dynamics.u_dim}, {self.N}), whereas the provided shapes are: {shapes_str}.")
 
         # Generate warm start input trajectories if not provided
         if warmStartInputTrajectories is None:
