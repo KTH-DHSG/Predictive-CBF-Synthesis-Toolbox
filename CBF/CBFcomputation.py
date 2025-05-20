@@ -84,8 +84,6 @@ def computeCbfParallelized(cbfModule, num_of_batches_factor=20, processes=None, 
     timeout = timeout_per_sample * batch_size
     client = Client(processes=True, n_workers=processes, threads_per_worker=1, memory_limit='2GB', death_timeout=180)
     webbrowser.open(client.dashboard_link)
-    # futures = client.map(computeCbfForBatch, [opt_specs_list[0]], [batches[0]])
-    # client.gather(futures)
     futures = client.map(computeCbfForBatch, opt_specs_list, batches, retries=3)
 
     for future in tqdm(as_completed(futures, timeout=timeout), total=len(futures), desc="Computing CBF [batches computed/total batches]"):

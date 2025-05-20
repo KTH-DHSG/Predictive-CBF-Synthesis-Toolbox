@@ -22,7 +22,7 @@ class LinearSystem(DynamicSystem):
         Args:
             A (NumPy array): state matrix
             B (NumPy array): input matrix
-            x0 (NumPy array with length 3): initial state vector; Default is zero vector with corresponding dimension
+            x0 (NumPy array with length x_dim): initial state vector; Default is zero vector with corresponding dimension
             u_min (NumPy array of with length u_dim): lower bound input constraint; Default is -inf with corresponding dimension
             u_max (NumPy array of with length u_dim): upper bound input constraint; Default is inf with corresponding dimension
         """
