@@ -95,6 +95,9 @@ def computeCbfParallelized(cbfModule, num_of_batches_factor=20, processes=None, 
             cbf_value = batch_element["cbf_value"]
             cbfModule.cbf.cbf_values[index] = cbf_value
     
+    # Close the dask client
+    client.close()
+
     print("CBF computation domain completed.")
 
 def computeCbfForBatch(opt_specs, batch):
