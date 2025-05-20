@@ -155,6 +155,11 @@ def computeCbfForBatch(opt_specs, batch):
 
         try:
             cbf_value, u_opt = computeCbfAtPoint(opti_object, current_point, warmStartInputTrajectories_tmp)
+
+            # ensure that u_opt always has ndim = 2 even if u_dim = 1
+            if u_opt is not None and u_opt.ndim == 1:
+                u_opt = np.array([u_opt])
+
             batch_element["cbf_value"] = cbf_value
         except Exception as e:
             colorWarning(f"An error occurred while computing the CBF value at {current_point}: {e}")
