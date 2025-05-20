@@ -167,12 +167,17 @@ class DynamicSystem(ABC):
             np.ndarray: time trajectory
             np.ndarray: state trajectory
         """
+        
         # initializations
         if x0 is None:
             x0 = self.x0
         if u is None:
             raise ValueError("Control input u must be specified")
         
+        # check if u has the correct shape
+        if u.ndim == 1:
+            u = np.array([u])
+
         N = u.shape[1]
 
         # simulate system
