@@ -139,6 +139,8 @@ class CBF:
 
         print("Saving CBF to file finished. \nNumer of data points saved: " + str(functools.reduce(operator.mul, self.cbf_values.shape, 1)))
 
+        return filename
+
     def load(self, filename, folder_name="Data"):
         # Create the file path
         file_path = os.path.join(folder_name, filename)
