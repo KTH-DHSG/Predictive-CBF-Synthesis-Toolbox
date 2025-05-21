@@ -101,7 +101,7 @@ class CBF:
         
         # Get the unique grid points from the domain
         grid_points = self.getCbfGridPoints()
-        grid_points_inversed = grid_points[::-1]  # Invert the order of the grid points for the interpolator to fit coordinates with the CBF values
+        grid_points_inversed = (grid_points[1],grid_points[0],*grid_points[2:])  # Invert the first two dimensions for the interpolator in order to account for the meshgrid format that is used for storing the CBF values
         
         # Create the interpolator
         interpolator = RegularGridInterpolator(grid_points_inversed,self.cbf_values,method=method,bounds_error=False,fill_value=None)
