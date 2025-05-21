@@ -274,6 +274,8 @@ class CBFmodule:
 
         print("Saving CBFmodule to file finished")
 
+        return filename
+
     def load(self, filename, folder_name="Data"):  
         # create the file path
         file_path = os.path.join(folder_name, filename)
