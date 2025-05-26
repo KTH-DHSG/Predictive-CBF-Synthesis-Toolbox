@@ -106,10 +106,10 @@ class CBF:
         axis_order = list(range(len(grid_points)))
         axis_order[0], axis_order[1] = 1, 0
 
-        self.cbf_values = np.transpose(self.cbf_values, axes=axis_order)
+        cbf_values_for_interpolator = np.transpose(self.cbf_values, axes=axis_order)
 
         # Create the interpolator
-        interpolator = RegularGridInterpolator(grid_points,self.cbf_values,method=method,bounds_error=False,fill_value=None)
+        interpolator = RegularGridInterpolator(grid_points,cbf_values_for_interpolator,method=method,bounds_error=False,fill_value=None)
         
         return interpolator
         
