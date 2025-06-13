@@ -216,6 +216,8 @@ def initializeCbfComputation(opt_specs_with_dynamics):
         Dictionary containing the optimization problem and its parameters.
         - h: function
             The function h(x) used in the optimization problem.
+        - gamma: float
+            The gamma parameter.
         - x0_param: CasADi parameter
             The initial state parameter for the optimization problem.
         - p_norm_param: CasADi parameter
@@ -235,6 +237,7 @@ def initializeCbfComputation(opt_specs_with_dynamics):
     """
     # Get optimization specifications
     h = opt_specs_with_dynamics["h"]                    # h function
+    gamma = opt_specs_with_dynamics["gamma"]            # gamma parameter
     cf = opt_specs_with_dynamics["cf"]                  # terminal constraint function
     dynamics = opt_specs_with_dynamics["dynamics"]      # dynamics of the system
     N = opt_specs_with_dynamics["N"]                    # number of discretization steps
@@ -249,6 +252,7 @@ def initializeCbfComputation(opt_specs_with_dynamics):
     p_norm_min = opt_specs_with_dynamics["p_norm_min"]  # minimum p-norm value
 
     opti_object = { 'h': h,
+                    'gamma': gamma,
                     'p_norm': p_norm,
                     'p_norm_decrement': p_norm_decrement,
                     'p_norm_min': p_norm_min,
@@ -359,6 +363,7 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
     
     # Read out opti_object
     h = opti_object['h']                            # h function
+    gamma = opti_object['gamma']                    # gamma parameter
     cbfOpti = opti_object['cbfOpti']                # Optimization problem
     p_norm = opti_object['p_norm']                  # p-norm value
     p_norm_decrement = opti_object['p_norm_decrement'] # p-norm decrement value
@@ -444,7 +449,7 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
             # 2. simulate the system with the optimal control input
             _, x_opt_tmp = dynamics.simulateOverHorizon(x0=point,u=u_opt_tmp,dt=dt)
             # 3. compute the CBF value
-            h_values_opt = [h(x_opt_tmp[:, k]) for k in range(N+1)]       # Compute h(x_opt[k]) for k = 0,...,N
+            h_values_opt = [h(x_opt_tmp[:, k]) - gamma*k*dt for k in range(N+1)]       # Compute h(x_opt[k]) for k = 0,...,N
             # 4. compute the cbf value candidate as the smallest value of h_values_opt
             cbfValues[i] = np.min(h_values_opt)
             # 5. store the optimal control input and state trajectory
