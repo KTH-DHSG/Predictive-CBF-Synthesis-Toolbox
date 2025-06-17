@@ -284,7 +284,7 @@ class CBFmodule:
             with open(file_path, "r") as file:
                 attributes = json.load(file)
         except IOError as e:
-            print(f"An error occurred while loading the file: {e}")
+            print(f"An error occurred while loading the file. File not found. Please check the filename and folder name.")
 
         for key, value in attributes.items():
             if isinstance(value, list):  # Convert lists back to NumPy arrays
