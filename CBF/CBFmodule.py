@@ -30,29 +30,38 @@ class CBFmodule:
     This includes the CBF itself, the dynamic system, the state constraint, the terminal constraint, 
     the prediction horizon, and the CBF design parameter."""
 
-    def __init__(self,h=None,dynamicSystem=None,cf=None,T=None,N=None,gamma=None,domain_lower_bound=None,domain_upper_bound=None,discretization=None,p_norm=50,p_norm_decrement=10,p_norm_min=20):
+    def __init__(self,h=None,dynamicSystem=None,cf=None,box_constraints_min=None,box_constraints_max=None,T=None,N=None,gamma=None,alpha_bar=None,domain_lower_bound=None,domain_upper_bound=None,discretization=None,p_norm=50,p_norm_decrement=10,p_norm_min=20,warm_start_controller=None):
         """Summarizes all specifications for the computation of a CBF.
 
         Args:
             h (lambda function or function): function defining state constraint as its zero super level set
             dynamicSystem (DynamicSystem): dynamic system description
+            box_constraints_min (float array): The minimum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
+            box_constraints_max (float array): The maximum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
             cf (lambda function or function): terminal constraint condition, returning true or false
             T (float): prediction horizon
             N (int): number of steps into which the prediction horizon is divided
-            gamma(float): positive CBF desgin parameter
+            gamma (float): positive CBF design parameter
             domain_lower_bound (NumPy array of length x_dim): lower bound of domain
             domain_upper_bound (NumPy array of length x_dim): upper bound of domain
             discretization (int array of length x_dim): number of grid points in respective dimension
+            p_norm (float): p-norm value used to approximate the maximum of the min-max-problem
+            p_norm_decrement (float): decrement value for p_norm used if the optimization is not successful
+            p_norm_min (float): minimum value for p-norm used in optimization; if this value is reached, p_norm will not be further decremented
+            warm_start_controller (function or lambda function): feedback controller u(x) used for determining control inputs for warm starting the optimization. Alternative to providing warm start input trajectories.
         """
         if not all(value is None for value in [h, dynamicSystem, cf, T, N, gamma, domain_lower_bound, domain_upper_bound, discretization]):
             # initialization with variables
             self.h = h                              # state constraint function
             self.dynamics = copy.deepcopy(dynamicSystem)  # dynamic system description (object of DynamicSystem class) 
             self.terminal_condition = cf            # terminal constraint function
+            self.box_constraints_min = box_constraints_min  # box constraints min
+            self.box_constraints_max = box_constraints_max  # box constraints max
             self.T = T                              # prediction horizon
             self.N = N                              # number of steps into which the prediction horizon is divided
             self.dt = T/N                           # discretization time step
             self.gamma = gamma                      # CBF design parameter
+            self.alpha_bar = alpha_bar              # encoding the class K function from the CBF condition into the CBF construction
             self.p_norm = p_norm                    # p-norm value used to approximate the maximum of the min-max-problem
             self.p_norm_decrement = p_norm_decrement  # decrement value for p_norm used if the optimization is not successful
             self.p_norm_min = p_norm_min            # minimum value for p-norm used in optimization; if this value is reached, p_norm will not be further decremented
@@ -62,6 +71,8 @@ class CBFmodule:
             self.discretization = discretization            # number of grid points in respective dimension
 
             self.warmStartInputTrajectories = None       # warm start input trajectories
+
+            self.warm_start_controller = warm_start_controller  # warm start controller function
 
             self.cbf = CBF(domain_lower_bound,domain_upper_bound,discretization)  # CBF object
         else:
@@ -80,10 +91,13 @@ class CBFmodule:
                 - 'h': The current value of the barrier function.
                 - 'cf': The terminal condition.
                 - 'dynamicSystem': The dynamic system being used as string. To use the dynamic system, the string must be converted back to a dynamic system object! Therefore, use a GenericDynamicSystem object to store the dynamic system and call the loadAttributesFromJSON method to convert the string back to a dynamic system object.
+                - 'box_constraints_min': float array. The minimum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
+                - 'box_constraints_max': float array. The maximum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
                 - 'T': The total time horizon.
                 - 'N': The number of discretization steps.
                 - 'dt': The time step size.
                 - 'gamma': The gamma parameter.
+                - 'alpha_bar': For encoding the class K function from the CBF condition into the CBF construction.
                 - 'h_offset': The computed offset for the barrier function.
                 - 'p_opts': Placeholder for solver options (currently None).
                 - 's_opts': Placeholder for solver options (currently None).
@@ -92,13 +106,8 @@ class CBFmodule:
                 - 'p_norm_decrement': The decrement value for the p-norm.
                 - 'p_norm_min': The minimum value for the p-norm.
                 - 'warmStartInputTrajectories': The warm start input trajectories as multi-dimensional python (not NumPy) array.
+                - 'warm_start_controller': The warm start controller function as string. Alternative to providing warm start input trajectories.
         """
-        
-
-        if not hasattr(self, 'warmStartInputTrajectories'):
-            self.warmStartInputTrajectories = self.setWarmStartInputTrajectories()
-        elif self.warmStartInputTrajectories is None:
-            self.warmStartInputTrajectories = self.setWarmStartInputTrajectories()
 
         h_offset = self.computeHoffset()
 
@@ -106,10 +115,13 @@ class CBFmodule:
             'h': aux.funcToJSONString(self.h),
             'cf': aux.funcToJSONString(self.terminal_condition),
             'dynamics': self.dynamics.getAttributesAsJSON(),
+            'box_constraints_min': self.box_constraints_min,
+            'box_constraints_max': self.box_constraints_max,
             'T': self.T,
             'N': self.N,
             'dt': self.dt,
             'gamma': self.gamma,
+            'alpha_bar': aux.funcToJSONString(self.alpha_bar) if self.alpha_bar is not None else None,
             'h_offset':h_offset,
             'p_opts': None,
             's_opts': None,
@@ -117,7 +129,8 @@ class CBFmodule:
             'p_norm': self.p_norm, 
             'p_norm_decrement': self.p_norm_decrement,
             'p_norm_min': self.p_norm_min,
-            'warmStartInputTrajectories': self.warmStartInputTrajectories.tolist()
+            'warmStartInputTrajectories': self.warmStartInputTrajectories.tolist() if isinstance(self.warmStartInputTrajectories, np.ndarray) else None,
+            'warm_start_controller': aux.funcToJSONString(self.warm_start_controller) if self.warm_start_controller is not None else None
         }
 
         return opt_specs
@@ -132,10 +145,13 @@ class CBFmodule:
         - 'h': The current value of the system's state variable.
         - 'cf': The terminal condition for the optimization.
         - 'dynamics': The system dynamics.
+        - 'box_constraints_min': float array. The minimum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
+        - 'box_constraints_max': float array. The maximum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
         - 'T': The total time horizon for the optimization.
         - 'N': The number of discretization steps.
         - 'dt': The time step size.
         - 'gamma': A parameter related to the optimization problem.
+        - 'alpha_bar': For encoding the class K function from the CBF condition into the CBF construction.
         - 'h_offset': The offset value computed for the state variable.
         - 'p_opts': Placeholder for optimization parameters (currently None).
         - 's_opts': Placeholder for solver options (currently None).
@@ -144,6 +160,7 @@ class CBFmodule:
         - 'p_norm_decrement': The decrement value for the norm.
         - 'p_norm_min': The minimum value for the norm.
         - 'warmStartInputTrajectories': Input trajectories for warm starting the optimization.
+        - 'warm_start_controller': The warm start controller for the optimization. Alternative to providing warm start input trajectories.
         If the attribute 'warmStartInputTrajectories' does not exist or is None, it is 
         initialized by calling the method `setWarmStartInputTrajectories`.
 
@@ -164,10 +181,13 @@ class CBFmodule:
             'h': self.h,
             'cf': self.terminal_condition,
             'dynamics': self.dynamics,
+            'box_constraints_min': self.box_constraints_min,
+            'box_constraints_max': self.box_constraints_max,
             'T': self.T,
             'N': self.N,
             'dt': self.dt,
             'gamma': self.gamma,
+            'alpha_bar': self.alpha_bar,
             'h_offset':h_offset,
             'p_opts': None,
             's_opts': None,
@@ -175,7 +195,8 @@ class CBFmodule:
             'p_norm': self.p_norm, 
             'p_norm_decrement': self.p_norm_decrement,
             'p_norm_min': self.p_norm_min,
-            'warmStartInputTrajectories': self.warmStartInputTrajectories
+            'warmStartInputTrajectories': self.warmStartInputTrajectories,
+            'warm_start_controller': self.warm_start_controller
         }
 
         return opt_specs_with_dynamics
@@ -215,7 +236,7 @@ class CBFmodule:
             raise ValueError("The shape of the warm start input trajectories does not match the expected shape.")
 
         # Generate warm start input trajectories if not provided
-        if warmStartInputTrajectories is None:
+        if warmStartInputTrajectories is None and self.warm_start_controller is None:
             warmStartInputTrajectories = np.array([np.zeros((self.dynamics.u_dim,self.N))])
             colorWarning("Warm start input trajectories are not provided. Default initialization is used.")
 
@@ -249,11 +270,18 @@ class CBFmodule:
                         "source": lambda_source[lambda_source.find("=") + 1:].strip()
                     }
                 else:
-                    attributes[key] = {
-                        "type": "function",
-                        "name": value.__name__,
-                        "source": textwrap.dedent(inspect.getsource(value))
-                    }
+                    try:
+                        attributes[key] = {
+                            "type": "function",
+                            "name": value.__name__,
+                            "source": textwrap.dedent(inspect.getsource(value))
+                        }
+                    except Exception as e:
+                        attributes[key] = {
+                            "type": "function",
+                            "name": value.__name__,
+                            "source": 'Error occured while saving: ' + str(e)
+                        }
             elif isinstance(value, DynamicSystem):
                 value.save(filename + "_dynamics", folder_name)
             elif isinstance(value, CBF):
@@ -291,8 +319,11 @@ class CBFmodule:
                 self.__dict__[key] = np.array(value)
             elif isinstance(value, dict):
                 if value.get("type") == "function":  # Reconstruct functions
-                    exec(value["source"], globals())
-                    self.__dict__[key] = eval(value["name"])
+                    try:
+                        exec(value["source"], globals())
+                        self.__dict__[key] = eval(value["name"])
+                    except Exception as e:
+                        print(f"Warning: Error occurred while loading function '{key}': {e}")
                 elif value.get("type") == "lambda":  # Reconstruct lambdas
                     self.__dict__[key] = eval(value["source"])
             else:

@@ -14,6 +14,8 @@ frames_*/
 *.png
 *.jpg
 
+**/Data_large_files
+
 # Except keep mp4 files inside these folders:
 !Examples/B1/*.mp4
 !Examples/S1/*.mp4

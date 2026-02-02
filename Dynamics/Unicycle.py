@@ -59,7 +59,7 @@ class Unicycle(DynamicSystem):
         return x_dot
     
     @staticmethod
-    def u_follow_straight_line(x,v_d,y_d=0):
+    def u_follow_straight_line(x,v_d,y_d=0.0,rot=0.0):
         """
         Computes the control input to follow a straight line defined by y = y_d.
 
@@ -68,21 +68,29 @@ class Unicycle(DynamicSystem):
                         and x[2] is the vehicle orientation (psi_state).
         v_d (float): The desired velocity of the vehicle.
         y_d (float, optional): The desired y-position of the vehicle. Default is 0.
+        rot (float, optional): The rotation angle of the desired line with respect to the x-axis in radians. Default is 0.
 
         Returns:
         numpy.ndarray: The control input vector [v_d, omega], where omega is the control input for the
                        orientation adjustment based on the desired vehicle orientation.
         """
-        
+
+        x_copy = ca.DM(x)
+
+        x_copy[1] = x_copy[1] - y_d
+
+        R = aux_math.rotation_matrix_2d(-rot)
+        x_transformed = ca.vertcat(R @ x_copy[0:2], x_copy[2] - rot)
+
         # extract required states
-        y_state = float(x[1]) # -0.15
-        psi_state = float(x[2])
+        y_state = float(x_transformed[1]) 
+        psi_state = float(x_transformed[2])
 
         k_psi = np.pi/4     # Maximum value of desired orientation angle in radians in order to get back to the straight line 
         k_damp = 0.3
         k = 1
 
-        psi_d = -k_psi * np.clip(k_damp * (y_state - y_d), -1, 1)
+        psi_d = -k_psi * np.clip(k_damp * y_state, -1, 1)
 
         omega = k * (psi_d - psi_state) 
 

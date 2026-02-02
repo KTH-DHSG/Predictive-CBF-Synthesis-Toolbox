@@ -12,6 +12,7 @@
 
 import numpy as np
 from Dynamics.DynamicSystem import DynamicSystem
+import Auxiliaries.auxiliary_math as aux_math
 import casadi as ca
 
 class Bicycle(DynamicSystem):
@@ -57,7 +58,7 @@ class Bicycle(DynamicSystem):
         return x_dot
     
     @staticmethod
-    def u_follow_straight_line(x,v_d,y_d=0):
+    def u_follow_straight_line(x,v_d,y_d=0,rot=0.0):
         """
         Computes the control input to follow a straight line defined by y = y_d.
 
@@ -66,18 +67,25 @@ class Bicycle(DynamicSystem):
                         and x[2] is the vehicle orientation (psi_state).
         v_d (float): The desired velocity of the vehicle.
         y_d (float, optional): The desired y-position of the vehicle. Default is 0.
+        rot (float, optional): The rotation angle of the desired line with respect to the x-axis in radians. Default is 0.
         
         Returns:
         numpy.ndarray: The control input vector [v_d, rho], where rho is the control input for the 
                        orientation adjustment based on the desired vehicle orientation.
         """
 
-        # extract required states
-        y_state = float(x[1]) # -0.15
-        psi_state = float(x[2])
+        x_copy = ca.DM(x)
 
+        x_copy[1] = x_copy[1] - y_d
+
+        R = aux_math.rotation_matrix_2d(-rot)
+        x_transformed = ca.vertcat(R @ x_copy[0:2], x_copy[2] - rot)
+
+        # extract required states
+        y_state = float(x_transformed[1]) 
+        psi_state = float(x_transformed[2])
         # desired vehicle orientation
-        psi_d = -np.pi/2 * np.exp(y_state-y_d)/(np.exp(y_state-y_d) + 1) + np.pi/4
+        psi_d = -np.pi/2 * np.exp(y_state)/(np.exp(y_state) + 1) + np.pi/4
         rho = 2 * (psi_d - psi_state)
 
         u = np.array([v_d, rho])
@@ -85,7 +93,7 @@ class Bicycle(DynamicSystem):
         return u
     
     @staticmethod
-    def plot_trajectory_as_triangular_marker(plt, bicycle_object, marker_shape=(0.5,0.25), marker_spacing=10, line_color = 'b', linewidth=2, marker_color='k-', marker_linewidth=1):
+    def plot_trajectory_as_triangular_marker(plt, bicycle_object, marker_shape=(0.5,0.25), marker_spacing=10, line_color = 'b', linewidth=2, marker_color='k', marker_linewidth=1):
         """
         Plots the trajectory of a bicycle object as a line with triangular markers indicating the orientation.
 

@@ -59,7 +59,9 @@ def computeCbfParallelized(cbfModule, num_of_batches_factor=20, processes=None, 
             'verbose': False}
     if opt_specs['s_opts'] is None:
         opt_specs['s_opts'] = {'max_iter': 1000,
-            'print_level': 0}
+            'print_level': 0,
+            #'max_cpu_time': 1.0
+            }
 
     # Get the domain of the CBF as a list of points
     point_list = copy.deepcopy(cbfModule.cbf.getPointList())
@@ -82,7 +84,7 @@ def computeCbfParallelized(cbfModule, num_of_batches_factor=20, processes=None, 
 
     # Initialize the dask client
     timeout = timeout_per_sample * batch_size
-    client = Client(processes=True, n_workers=processes, threads_per_worker=1, memory_limit='2GB', death_timeout=180)
+    client = Client(processes=True, n_workers=processes, threads_per_worker=1, memory_limit='4GB', death_timeout=6000)
     webbrowser.open(client.dashboard_link)
     futures = client.map(computeCbfForBatch, opt_specs_list, batches, retries=3)
 
@@ -118,6 +120,10 @@ def computeCbfForBatch(opt_specs, batch):
         - "p_norm_min" (float): The minimum p-norm value. If p_norm is smaller than this value, the optimization is not re-evaluated.
         - "warmStartInputTrajectories" (np.ndarray): Initial input trajectories for warm start.
         - "dynamics" (str): JSON string representing the dynamics of the system (to avoid serialization issues; object is recreated internally).
+        - "box_constraints_min" (np.ndarray): Minimum box constraints for the system states.
+        - "box_constraints_max" (np.ndarray): Maximum box constraints for the system states.
+        - alpha_bar (function): The class K function for encoding the CBF condition into the CBF construction as JSON string (to avoid serialization issues; function is recreated internally).
+        - warm_start_controller (function): The warm start controller function as JSON string (to avoid serialization issues; function is recreated internally).
     batch (list): A list of dictionaries, where each dictionary represents a point and contains:
         - "point" (np.ndarray): The point at which to compute the CBF value.
         - "index" (int): The index of the point in the point list.
@@ -132,6 +138,8 @@ def computeCbfForBatch(opt_specs, batch):
     # recreate dynamics object and functions
     h = aux.JSONStringToFunc(opt_specs["h"])
     cf = aux.JSONStringToFunc(opt_specs["cf"])
+    alpha_bar = aux.JSONStringToFunc(opt_specs["alpha_bar"]) if opt_specs["alpha_bar"] is not None else None
+    warm_start_controller = aux.JSONStringToFunc(opt_specs["warm_start_controller"]) if opt_specs["warm_start_controller"] is not None else None
     generic_dynamics = GenericDynamicSystem()
     generic_dynamics.loadAttributesFromJSON(opt_specs["dynamics"])
 
@@ -140,6 +148,8 @@ def computeCbfForBatch(opt_specs, batch):
     opt_specs_reconstructed["cf"] = cf
     opt_specs_reconstructed["dynamics"] = generic_dynamics
     opt_specs_reconstructed["warmStartInputTrajectories"] = np.array(opt_specs["warmStartInputTrajectories"])
+    opt_specs_reconstructed["alpha_bar"] = alpha_bar
+    opt_specs_reconstructed["warm_start_controller"] = warm_start_controller
 
     warmStartInputTrajectories = opt_specs_reconstructed["warmStartInputTrajectories"]
 
@@ -147,10 +157,15 @@ def computeCbfForBatch(opt_specs, batch):
 
     u_opt = None
     for batch_element in batch:
-        if u_opt is not None:
-            warmStartInputTrajectories_tmp = np.append(warmStartInputTrajectories,np.array([u_opt]),axis=0)
+        if warm_start_controller is None:
+            if u_opt is not None:
+                warmStartInputTrajectories_tmp = np.append(warmStartInputTrajectories,np.array([u_opt]),axis=0)
+            else:
+                warmStartInputTrajectories_tmp = warmStartInputTrajectories
+        elif warm_start_controller is not None:
+            warmStartInputTrajectories_tmp = None
         else:
-            warmStartInputTrajectories_tmp = warmStartInputTrajectories
+            raise ValueError("Warm start controller has to be provided if no warm start input trajectories are provided.")
         
         current_point = batch_element["point"]
 
@@ -193,6 +208,10 @@ def initializeCbfComputation(opt_specs_with_dynamics):
             The terminal constraint function cf(x).
         - dynamics: object
             The dynamics of the system (as DynamicSystem object or an object of one of its subclasses).
+        - box_constraints_min: float array
+            The minimum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
+        - box_constraints_max: float array
+            The maximum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
         - N: int
             The number of discretization steps.
         - dt: float
@@ -218,6 +237,8 @@ def initializeCbfComputation(opt_specs_with_dynamics):
             The function h(x) used in the optimization problem.
         - gamma: float
             The gamma parameter.
+        - alpha_bar: function
+            Encoding the class K function for the CBF condition into the CBF construction.
         - x0_param: CasADi parameter
             The initial state parameter for the optimization problem.
         - p_norm_param: CasADi parameter
@@ -234,15 +255,25 @@ def initializeCbfComputation(opt_specs_with_dynamics):
             The p-norm decrement value. p_norm is decremented with this value if no solution is found.
         - p_norm_min: float
             The minimum p-norm value. If p_norm is smaller than this value, the optimization is not re-evaluated.
+        - box_constraints_min: float array
+            The minimum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
+        - box_constraints_max: float array
+            The maximum box constraint value. Box constraints allow to further confine the system states (for example constraints that are ensured later on through other compatible CBFs).
+        - warm_start_controller: function
+            Feedback controller for warm starting the optimization.
+
     """
     # Get optimization specifications
     h = opt_specs_with_dynamics["h"]                    # h function
     gamma = opt_specs_with_dynamics["gamma"]            # gamma parameter
     cf = opt_specs_with_dynamics["cf"]                  # terminal constraint function
     dynamics = opt_specs_with_dynamics["dynamics"]      # dynamics of the system
+    box_constraints_min = opt_specs_with_dynamics["box_constraints_min"] # box constraints min
+    box_constraints_max = opt_specs_with_dynamics["box_constraints_max"] # box constraints max
     N = opt_specs_with_dynamics["N"]                    # number of discretization steps
     dt = opt_specs_with_dynamics["dt"]                  # time step size
     gamma = opt_specs_with_dynamics["gamma"]            # gamma parameter
+    alpha_bar = opt_specs_with_dynamics["alpha_bar"]    # class K function for encoding the CBF condition into the CBF construction
     h_offset = opt_specs_with_dynamics["h_offset"]      # offset for the h function
     p_opts = opt_specs_with_dynamics["p_opts"]          # solver options for the CasADi solver
     s_opts = opt_specs_with_dynamics["s_opts"]          # solver options for the CasADi solver
@@ -250,22 +281,35 @@ def initializeCbfComputation(opt_specs_with_dynamics):
     p_norm = opt_specs_with_dynamics["p_norm"]          # p-norm value/start value for p_norm
     p_norm_decrement = opt_specs_with_dynamics["p_norm_decrement"] # p-norm decrement value
     p_norm_min = opt_specs_with_dynamics["p_norm_min"]  # minimum p-norm value
+    warm_start_controller = opt_specs_with_dynamics["warm_start_controller"] # warm start input trajectories
+
+    if box_constraints_min is None:
+        box_constraints_min = ca.DM(-np.inf * np.ones(dynamics.x_dim))
+    if box_constraints_max is None:
+        box_constraints_max = ca.DM(np.inf * np.ones(dynamics.x_dim))
 
     opti_object = { 'h': h,
                     'gamma': gamma,
+                    'alpha_bar': alpha_bar,
                     'p_norm': p_norm,
                     'p_norm_decrement': p_norm_decrement,
                     'p_norm_min': p_norm_min,
                     'dynamics': dynamics,
+                    'box_constraints_min': box_constraints_min,
+                    'box_constraints_max': box_constraints_max,
                     'dt': dt,
-                    'N': N}
+                    'N': N,
+                    'warm_start_controller': warm_start_controller
+                    }
     
     if p_opts is None:
         p_opts = {'print_time': False,
             'verbose': False}
     if s_opts is None:
         s_opts = {'max_iter': 1000,
-            'print_level': 0}
+            'print_level': 0,
+            #"max_cpu_time": 1.0
+        }
 
     # determine dimensions of state and input of the dynamic system
     x_dim = dynamics.x_dim
@@ -306,9 +350,19 @@ def initializeCbfComputation(opt_specs_with_dynamics):
         # Integrate dynamics
         x_next = dynamics_discretized(X[:, k], U[:, k])
         cbfOpti.subject_to(X[:, k+1] == x_next)
+        
+        # State box constraints: box_constraints_min <= x <= box_constraints_max
+        if box_constraints_min is None and box_constraints_max is None:
+            pass
+        elif box_constraints_min is None:
+            cbfOpti.subject_to(X[:, k] <= box_constraints_max)
+        elif box_constraints_max is None:
+            cbfOpti.subject_to(X[:, k] >= box_constraints_min)
+        else:
+            cbfOpti.subject_to(cbfOpti.bounded(box_constraints_min, X[:, k], box_constraints_max))
 
-        # Input constraints
-        cbfOpti.subject_to(cbfOpti.bounded(dynamics.u_min, U[:, k], dynamics.u_max))  # Control input: u_min <= u <= u_max
+        # Input constraints u_min <= u <= u_max
+        cbfOpti.subject_to(cbfOpti.bounded(dynamics.u_min, U[:, k], dynamics.u_max)) # Control input: u_min <= u <= u_max
 
     # Terminal constraint
     cbfOpti.subject_to(cf(X[:, -1]) >= 0)  # Terminal constraint: cf(xN) >= 0
@@ -318,10 +372,19 @@ def initializeCbfComputation(opt_specs_with_dynamics):
 
     p_norm_param = cbfOpti.parameter()
     opti_object['p_norm_param'] = p_norm_param
-    
-    h_values_inv = 1 / (ca.vertcat(*h_values) - np.arange(N+1) * gamma * dt + h_offset + eps) # Vectorized computation of 1 / (h(x_N[k]) - k * gamma * Δt + h_tilde + epsilon) for k = 0,...,N
-    cost = ca.power(ca.sum1(ca.power(ca.fabs(h_values_inv), p_norm_param)), 1/p_norm_param)            # Compute the p-norm of the vector h_values_inv 
-    cbfOpti.minimize(cost)                                      # Objective: minimize the p-norm of the vector h_values_inv
+
+    if gamma != None:
+        gamma_factor = gamma
+    elif alpha_bar != None:
+        gamma_factor = ca.vertcat(*[-alpha_bar(h_values[k]) for k in range(N+1)])
+    else:
+        raise ValueError("Either gamma or alpha_bar must be provided in the optimization specifications.")
+        
+    indices = ca.DM(np.arange(N+1))
+
+    h_values_inv = 1 / (ca.vertcat(*h_values) - indices * gamma_factor * dt + h_offset + eps)
+    cost = ca.power(ca.sum1(ca.power(ca.fabs(h_values_inv), p_norm_param)), 1/p_norm_param)            # Compute the p-norm of the vector h_values_inv
+    cbfOpti.minimize(cost)       # Objective: minimize the p-norm of the vector h_values_inv
 
     # Solver options
     cbfOpti.solver('ipopt', p_opts, s_opts)
@@ -331,7 +394,7 @@ def initializeCbfComputation(opt_specs_with_dynamics):
 
     return opti_object
 
-def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
+def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories=None):
     """
     Computes the Control Barrier Function (CBF) value at a given point.
 
@@ -340,6 +403,8 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
     opti_object (dict): A dictionary containing the optimization problem and related parameters.
         - h (function): The h function. 
         - cbfOpti (object): The optimization problem.
+        - gamma (float): The gamma parameter.
+        - alpha_bar (function): The class K function for encoding the CBF condition into the CBF construction.
         - p_norm (float): The p-norm value.
         - p_norm_decrement (float): The p-norm decrement value.
         - p_norm_min (float): The minimum p-norm value.
@@ -350,6 +415,9 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
         - dynamics (object): The dynamics of the system.
         - dt (float): The time step size.
         - N (int): The number of discretization steps.
+        - box_constraints_min (float array): The minimum box constraint value.
+        - box_constraints_max (float array): The maximum box constraint value.
+        - 'warm_start_controller': The warm start controller for the optimization. Alternative to providing warm start input trajectories.
     point (array-like): The point at which the CBF value is to be computed.
     warmStartInputTrajectories (array-like): The warm start input trajectories.
 
@@ -364,6 +432,7 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
     # Read out opti_object
     h = opti_object['h']                            # h function
     gamma = opti_object['gamma']                    # gamma parameter
+    alpha_bar = opti_object['alpha_bar']            # alpha_bar function
     cbfOpti = opti_object['cbfOpti']                # Optimization problem
     p_norm = opti_object['p_norm']                  # p-norm value
     p_norm_decrement = opti_object['p_norm_decrement'] # p-norm decrement value
@@ -375,10 +444,16 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
     dynamics = opti_object['dynamics']              # dynamics of the system
     dt = opti_object['dt']                          # time step size
     N = opti_object['N']                            # number of discretization steps
+    warm_start_controller = opti_object['warm_start_controller']
 
-    warmStartStateTrajectories = np.zeros((warmStartInputTrajectories.shape[0],dynamics.x_dim,N+1))
-    for i in range(warmStartInputTrajectories.shape[0]):
-        _, warmStartStateTrajectories[i] = dynamics.simulateOverHorizon(x0=point,u=warmStartInputTrajectories[i],dt=dt)
+    if warm_start_controller is None:
+        warmStartStateTrajectories = np.zeros((warmStartInputTrajectories.shape[0],dynamics.x_dim,N+1))
+        for i in range(warmStartInputTrajectories.shape[0]):
+            _, warmStartStateTrajectories[i] = dynamics.simulateOverHorizon(x0=point,u=warmStartInputTrajectories[i],dt=dt)
+    else:
+        warmStartInputTrajectories = np.zeros((1,dynamics.u_dim,N))
+        warmStartStateTrajectories = np.zeros((1,dynamics.x_dim,N+1))
+        _, warmStartStateTrajectories[0], warmStartInputTrajectories[0] = dynamics.simulateWithFeedbackController(x0=point,u=warm_start_controller,dt=dt,N=N)
     
     # Set starting point for optimization
     cbfOpti.set_value(x0_param, point)
@@ -449,7 +524,12 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
             # 2. simulate the system with the optimal control input
             _, x_opt_tmp = dynamics.simulateOverHorizon(x0=point,u=u_opt_tmp,dt=dt)
             # 3. compute the CBF value
-            h_values_opt = [h(x_opt_tmp[:, k]) - gamma*k*dt for k in range(N+1)]       # Compute h(x_opt[k]) for k = 0,...,N
+            if gamma != None:
+                h_values_opt = [h(x_opt_tmp[:, k]) - gamma*k*dt for k in range(N+1)]       # Compute h(x_opt[k]) for k = 0,...,N
+            elif alpha_bar != None:
+                h_values_opt = [h(x_opt_tmp[:, k]) + alpha_bar(h(x_opt_tmp[:, k]))*k*dt for k in range(N+1)]       # Compute h(x_opt[k]) for k = 0,...,N
+            else:
+                raise ValueError("Either gamma or alpha_bar must be provided in the optimization specifications.")
             # 4. compute the cbf value candidate as the smallest value of h_values_opt
             cbfValues[i] = np.min(h_values_opt)
             # 5. store the optimal control input and state trajectory
@@ -460,14 +540,14 @@ def computeCbfAtPoint(opti_object, point, warmStartInputTrajectories):
                 x_opt = x_opt_tmp
 
         else:
-            cbfValues[i] = np.nan
+            cbfValues[i] = -np.inf
 
-    # FInd the minimum value of the CBF value array
+    # Find the minimum value of the CBF value array
     if cbfValue > -np.inf:
         print(f"CBF value at {point} has been found: cbfValue = {cbfValue}. List of values from which the CBF value has been selected from: {cbfValues}")
     else:   
-        cbfValue = np.nan
-        print(f"CBF value at {point} could not be found. The CBF value is set to nan.")
+        cbfValue = -np.inf
+        print(f"CBF value at {point} could not be found. The CBF value is set to -inf.")
 
     return cbfValue, u_opt
 

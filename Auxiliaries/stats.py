@@ -4,7 +4,7 @@
 
     This script is useful for quickly assessing the size of a codebase.
 
-    Automatically generated code by Adrian Wiltz, 2025
+    Automatically generated code 
     
 """
 

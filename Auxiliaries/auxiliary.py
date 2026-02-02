@@ -14,6 +14,7 @@ import casadi as casadi
 import textwrap
 import types
 import sys
+import matplotlib.colors as mcolors
 
 import numpy as np
 
@@ -89,4 +90,25 @@ def is_meshgrid(arr_list):
         shapes = [arr.shape for arr in arr_list]
         return all(shape == shapes[0] for shape in shapes)
     return False
+
+def lighten(color, amount=0.5):
+    """
+    Lighten a color by mixing it with white.
+    amount=0 → original color
+    amount=1 → white
+    """
+    c = np.array(mcolors.to_rgb(color))
+    white = np.array([1, 1, 1])
+    return tuple((1 - amount) * c + amount * white)
+
+def darken(color, amount=0.5):
+    """
+    Darken a color by mixing it with black.
+    amount=0 → original color
+    amount=1 → black
+    """
+    c = np.array(mcolors.to_rgb(color))
+    black = np.array([0, 0, 0])
+    return tuple((1 - amount) * c + amount * black)
+
 

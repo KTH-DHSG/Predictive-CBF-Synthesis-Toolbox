@@ -1,0 +1,58 @@
+{
+    "x_dim": 4,
+    "u_dim": 2,
+    "t0": 0,
+    "t": 0,
+    "dt": null,
+    "x0": [
+        5,
+        5,
+        5,
+        5
+    ],
+    "x": [
+        5,
+        5,
+        5,
+        5
+    ],
+    "u_min": [
+        0.0,
+        0.0
+    ],
+    "u_max": [
+        21.1896,
+        9.417600000000002
+    ],
+    "x_sol": [
+        [
+            5.0,
+            5.0,
+            5.0,
+            5.0
+        ]
+    ],
+    "u_sol": [],
+    "t_sol": [
+        0
+    ],
+    "f_attr": {
+        "type": "function",
+        "name": "f",
+        "source": "def f(self, x, u):\n    \"\"\"Implementation of the kinematic bicycle model using casadi data types.\n\n    Args:\n        x (casadi.MX with length 3): current state\n        u (casadi.MX with length 2): control input\n\n    Returns:\n        casadi.MX: time derivative of system state\n    \"\"\"\n\n    h1 = x[0]\n    h2 = x[1]\n    h3 = x[2]\n    h4 = x[3]\n\n    v1 = u[0]\n    v2 = u[1]\n\n    h1_dot = 1/self.A1 * v1 - self.a1/self.A1 * ca.sqrt(2.0*self.g*h1) - 0.5*self.a2/self.A2 * ca.sqrt(2.0*self.g*h2)\n    h2_dot = 1/self.A2 * v2 - self.a2/self.A2 * ca.sqrt(2.0*self.g*h2)\n    h3_dot = self.a1/self.A1 * ca.sqrt(2.0*self.g*h1) - self.a3/self.A3 * ca.sqrt(2.0*self.g*h3)\n    h4_dot = 1.5*self.a2/self.A2 * ca.sqrt(2.0*self.g*h2) - self.a4/self.A4 * ca.sqrt(2.0*self.g*h4)\n\n    x_dot = ca.vertcat(h1_dot, h2_dot, h3_dot, h4_dot)\n\n    return x_dot    \n"
+    },
+    "str_attr": {
+        "type": "function",
+        "name": "__str__",
+        "source": "def __str__(self):\n    str = \"Watertank\"\n    return str\n"
+    },
+    "A1": 20,
+    "a1": 0.6,
+    "A2": 20,
+    "a2": 0.4,
+    "A3": 20,
+    "a3": 0.4,
+    "A4": 20,
+    "a4": 0.4,
+    "g": 9.81
+}

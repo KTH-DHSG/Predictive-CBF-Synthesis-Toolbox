@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     # some parameters
     num_of_batches_factor = 40      # determines the number of batches for parallel computation
-    cbf_file_name = "u1_2_cbfm_1p12.json"
+    cbf_file_name = "u1_cbfm_1p12.json"
     
     # create a dynamic system
     t0 = 0
@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     # set parameters for the CBF module
     T = 10
-    gamma = 2
+    gamma = 1
 
     # set domain bounds
     domain_lower_bound = np.array([-10,-10,-np.pi])

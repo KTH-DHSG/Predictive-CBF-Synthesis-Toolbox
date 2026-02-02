@@ -191,6 +191,43 @@ class DynamicSystem(ABC):
         
         return np.array(timeTrajectory), np.array(stateTrajectory)
     
+    def simulateWithFeedbackController(self, x0=None, u=None, dt=0.1, N=10):
+        """Simulates the system over a horizon of N time steps with control input u applied with a zero-order hold. 
+        The attribute x of the class is updated with new system states, and the new system states are returned.
+
+        Args:
+            x0 (casadi.DM with shape (x_dim,)): initial state
+            u (casadi.DM with shape (u_dim,N)): control input, applied as zero-order hold to the system on time interval dt
+            dt (float): integration time interval
+            N (int): number of time steps to simulate
+            
+        Returns:
+            np.ndarray: time trajectory
+            np.ndarray: state trajectory
+            np.ndarray: input trajectory
+        """
+        
+        # initializations
+        if x0 is None:
+            x0 = self.x0
+        if u is None:
+            raise ValueError("Control input u must be specified")
+
+        # simulate system
+        input_trajectory = ca.DM.zeros((self.u_dim, N))
+        stateTrajectory = ca.DM.zeros((self.x_dim, N+1))
+        timeTrajectory = ca.DM.zeros(N+1)
+        stateTrajectory[:, 0] = x0
+        timeTrajectory[0] = self.t0
+        for k in range(N):
+            x_tmp = stateTrajectory[:, k]
+            u_tmp = u(x_tmp)
+            input_trajectory[:, k] = u_tmp
+            stateTrajectory[:, k+1] = self.simulate(x_tmp, u_tmp, dt, saveSolution=False)
+            timeTrajectory[k+1] = timeTrajectory[k] + dt
+        
+        return np.array(timeTrajectory), np.array(stateTrajectory), np.array(input_trajectory)
+    
     def __createOneStepSimultationFcn__(self, dt=0.1, number_of_finite_elements=4):
         """
         Creates a CasADi function for simulating the system over one time step with a given control input.
@@ -257,11 +294,18 @@ class DynamicSystem(ABC):
                         "source": lambda_source[lambda_source.find("=") + 1:].strip()
                     }
                 else:
-                    attributes[key] = {
-                        "type": "function",
-                        "name": value.__name__,
-                        "source": textwrap.dedent(inspect.getsource(value))
-                    }
+                    try:
+                        attributes[key] = {
+                            "type": "function",
+                            "name": value.__name__,
+                            "source": textwrap.dedent(inspect.getsource(value))
+                        }
+                    except Exception as e:
+                            attributes[key] = {
+                                "type": "function",
+                                "name": value.__name__,
+                                "source": f"# Source code not retrievable: {str(e)}"
+                            }
             else:  # Save other types directly
                 attributes[key] = value
         
@@ -305,9 +349,12 @@ class DynamicSystem(ABC):
                 self.__dict__[key] = np.array(value)
             elif isinstance(value, dict) and "source" in value:  # Reconstruct functions
                 # Execute the source code to recreate the function
-                exec(value["source"], globals())
-                # Bind the function to the instance
-                self.__dict__[key] = types.MethodType(eval(value["name"]), self)
+                try:
+                    exec(value["source"], globals())
+                    # Bind the function to the instance
+                    self.__dict__[key] = types.MethodType(eval(value["name"]), self)
+                except Exception as e:
+                    print(f"Warning: Error occurred while loading function '{key}': {e}")
             else:
                 self.__dict__[key] = value
 

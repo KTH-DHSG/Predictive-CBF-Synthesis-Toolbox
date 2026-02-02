@@ -19,13 +19,10 @@ from CBF.CBFmodule import CBFmodule
 import matplotlib.pyplot as plt
 
 # Parameters
-cbf_file_name = '2025-03-22_00-17-20_b1_1_cbfm_2p8.json'
+cbf_file_name = '2025-11-11_01-30-44_b_cbfm_1p12.json'
 cbf_folder_name = r'Examples_paper\B1\Data'
 
-cbf_offset = -2
-
-# cbf_file_name = '2025-02-11_16-27-19_myCBFmodule'
-# cbf_folder_name = 'Data'
+cbf_offset = -1.0
 
 orientation_value = 0  # Orientation angle in radians (first plot)
 x_value = -4.0  # Fixed x value for the slice (second plot)
@@ -103,7 +100,7 @@ input("Press Enter to continue...")
 
 x_fine = np.linspace(np.nanmin(X), np.nanmax(X), 500)
 y_fine = np.linspace(np.nanmin(Y), np.nanmax(Y), 500)
-psi_fine = np.linspace(np.nanmin(PSI), np.nanmax(PSI), 500)
+psi_fine = np.linspace(np.nanmin(PSI), np.nanmax(PSI), 1000)
 
 interpolator = cbfModule.cbf.getCbfInterpolator(method='linear')
 
@@ -129,20 +126,9 @@ black_rgba = mcolors.to_rgba('black')
 
 colors = [black_rgba if np.any(np.isclose(psi_point, level_lines, atol=4e-2)) else cmap(norm(psi_point)) for psi_point in psi_points]
 
-# Prepare surface plot for the zero-level set
-# Create meshgrid for interpolation
-# grid_x, grid_y = np.meshgrid(np.linspace(min(x_points), max(x_points), 100),
-#                              np.linspace(min(y_points), max(y_points), 100))
-
-# Interpolate psi values on the grid
-# grid_psi = griddata((x_points, y_points), psi_points, (grid_x, grid_y), method='linear')  # 'cubic' interpolation
-
 # Create a 3D plot
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-
-# Plot the interpolated surface
-# ax.plot_surface(grid_x, grid_y, grid_psi, cmap='viridis')
 
 # Plot the scattered points (zero-level set points)
 ax.scatter(x_points, y_points, psi_points, c=colors, s=5, label='Zero-level set points')

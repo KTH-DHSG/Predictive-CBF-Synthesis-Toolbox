@@ -1,0 +1,61 @@
+{
+    "h": {
+        "type": "function",
+        "name": "h",
+        "source": "def h(x):\n    \"\"\"State constraint function that supports numpy and casadi types\"\"\"\n    smoothness = 10.0\n    h_max = 10.0\n\n    smoothmin = -1/smoothness * ca.log(ca.exp(-smoothness*2.0*x[0]) + ca.exp(-smoothness*2.0*x[1]) + ca.exp(-smoothness*x[2]) + ca.exp(-smoothness*x[3]))\n\n    return smoothmin - h_max + 0.1\n"
+    },
+    "terminal_condition": {
+        "type": "function",
+        "name": "cf",
+        "source": "def cf(x):\n    \"\"\"Terminal constraint function for casadi type arguments\"\"\"\n\n    A1 = 20\n    a1 = 0.4\n    A2 = 20\n    a2 = 0.4\n    A3 = 20\n    a3 = 0.4\n    A4 = 20\n    a4 = 0.4\n\n    h_min = 10.0\n\n    return ca.vertcat(2.0*x[0]-h_min,\n                    2.0*x[1]-h_min,\n                    x[2]-h_min,\n                    x[3]-h_min,\n                    a1**2/A1**2 * x[0] - a3**2/A3**2 * x[2],\n                    1.5**2 * a2**2/A2**2 * x[1] - a4**2/A4**2 * x[3])\n"
+    },
+    "box_constraints_min": [
+        0,
+        0,
+        0,
+        0
+    ],
+    "box_constraints_max": [
+        Infinity,
+        Infinity,
+        Infinity,
+        Infinity
+    ],
+    "T": 60,
+    "N": 30,
+    "dt": 2.0,
+    "gamma": null,
+    "alpha_bar": {
+        "type": "function",
+        "name": "alpha_bar",
+        "source": "def alpha_bar(zeta):\n    \"\"\"Class K function for encoding the CBF condition into the CBF construction. Specify the class K function for the CBF condition here as alpha.\"\"\"\n\n    gamma = 0.1\n\n    sigmoid_func = 2*gamma*(1/(1 + ca.exp(-10.0*zeta)) - 0.5)\n\n    if isinstance(zeta, (ca.SX, ca.MX, ca.DM)):\n        return ca.if_else(zeta <= 0, 0, 0)\n    else:\n        # Normal Python numeric behavior\n        return sigmoid_func if zeta <= 0 else 0\n"
+    },
+    "p_norm": 40,
+    "p_norm_decrement": 10,
+    "p_norm_min": 40,
+    "domain_lower_bound": [
+        1.0,
+        1.0,
+        2.0,
+        2.0
+    ],
+    "domain_upper_bound": [
+        12.0,
+        12.0,
+        12.0,
+        12.0
+    ],
+    "discretization": [
+        22,
+        22,
+        21,
+        21
+    ],
+    "warmStartInputTrajectories": null,
+    "warm_start_controller": {
+        "type": "function",
+        "name": "u_ws",
+        "source": "def u_ws(x):\n    \"\"\"Warm start feedback controller for casadi type arguments\"\"\"\n\n    a1 = 0.6\n    a2 = 0.6\n    u_max = np.array([2.0 * a1**2 * 9.81 * 4.0, 2.0 * a2**2 * 9.81 * 4.0])\n\n    u = u_max\n\n    return u\n"
+    },
+    "h_offset": 8.03862943611199
+}

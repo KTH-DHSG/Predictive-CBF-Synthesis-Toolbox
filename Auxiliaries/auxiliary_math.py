@@ -10,6 +10,35 @@
 
 import numpy as np
 
+def wrap_to_pi(angle):
+    """
+    Wraps an angle to the range [-pi, pi].
+
+    Args:
+        angle (float or array-like): The angle(s) to be wrapped.
+
+    Returns:
+        float or array-like: The wrapped angle(s) in the range [-pi, pi].
+    """
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+def rotation_matrix_2d(theta):
+    """
+    Generate a 2D rotation matrix for a given angle.
+
+    Parameters:
+    theta (float): The rotation angle in radians.
+
+    Returns:
+    numpy.ndarray: A 2x2 rotation matrix.
+    """
+    c = np.cos(theta)
+    s = np.sin(theta)
+    R = np.array([[c, -s],
+                  [s,  c]])
+    return R
+
+
 def approximate_gradient(function, x, h=1e-5):
     """
     Approximates the gradient of an interpolated function at a given point using central differences.
@@ -22,7 +51,7 @@ def approximate_gradient(function, x, h=1e-5):
     Returns:
     - gradient: ndarray, shape (n,) -> numerical gradient at the given point
     """
-    point = np.asarray(x)  # Ensure the point is a NumPy array
+    point = np.asarray(x, dtype=float)  # Ensure the point is a NumPy array
     forward_gradient = np.zeros_like(point, dtype=float)  # Initialize gradient array
     backward_gradient = np.zeros_like(point, dtype=float)  # Initialize gradient array
 
@@ -61,7 +90,7 @@ def approximate_gradient(function, x, h=1e-5):
 
     # Choose gradient with sufficiently large norm
     if grad_norms[0] > 0.1:
-        grad_idx = 0
+        grad_idx = 1
     else:
         grad_idx = np.argmax(grad_norms)
 
@@ -144,32 +173,84 @@ def sigmoid(t):
 
     return sigmoid
 
+def triangular_wave(t, max_rate=1.0, amplitude=1.0):
+    """
+    Generate a triangular wave signal for a scalar time t.
 
-########################################################################################
-# Test the functions
+    Parameters:
+        t (float): Scalar time variable.
+        max_rate (float): Maximum absolute slope (rate of change). Must be > 0.
+        amplitude (float): Peak amplitude (wave ranges [-amplitude, +amplitude]).
 
-# if __name__ == "__main__":
+    Returns:
+        float: Value of the triangular wave at time t.
 
-#     import sys
-#     import os
+    Raises:
+        TypeError: If t is not a scalar.
+        ValueError: If max_rate is not positive.
+    """
+    # Ensure scalar input
+    if np.ndim(t) != 0:
+        raise TypeError("t must be a scalar (float or int)")
 
-#     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    A = float(abs(amplitude))
+    if A == 0.0:
+        return 0.0
 
-#     from Dynamics.Bicycle import Bicycle
-#     from CBF.CBFmodule import CBFmodule
+    if max_rate <= 0.0:
+        raise ValueError("max_rate must be positive")
 
-#     test_point = np.array([-3,0,0])
-#     test_input = np.array([2,0.5])
+    period = 4.0 * A / float(max_rate)
+
+    tt = float(t)
+    z = 2.0 * (tt / period - np.floor(tt / period + 0.5))
+    result = A * (2.0 * abs(z) - 1.0)
+
+    return float(result)
 
 
-#     cbf_module_filename = "2025-02-11_21-51-13_bicycle_example_1_cbf_module_finer_grid_1.json"
-#     cbf_module_folder_path = r'Examples\Bicycle_1\Data'
+def smooth_triangular_wave(t, max_rate=1.0, amplitude=1.0, smoothness=0.1, phase=0.0):
+    """
+    Generate a smoothed triangular wave signal.
 
-#     bicycle_cbf_module = CBFmodule()
-#     bicycle_cbf_module.load(cbf_module_filename, cbf_module_folder_path)
+    This version keeps the same amplitude and rate-based period definition,
+    but replaces sharp |x| corners with a differentiable smooth approximation.
 
-#     cbf_interpolator = bicycle_cbf_module.cbf.getCbfInterpolator()
+    Parameters:
+        t (float or ndarray): Time variable.
+        max_rate (float): Maximum absolute slope (rate of change). Must be > 0.
+        amplitude (float): Peak amplitude (wave ranges [-amplitude, +amplitude]).
+        smoothness (float): Corner rounding factor (>0, smaller = sharper, larger = smoother).
+        phase (float): Phase shift as a fraction of the period (-1, 1).
 
-#     my_bicycle = bicycle_cbf_module.dynamics
+    Returns:
+        float or ndarray: Value of the smooth triangular wave at time t.
+    """
+    A = float(abs(amplitude))
+    if A == 0.0:
+        return 0.0 if np.ndim(t) == 0 else np.zeros_like(t, dtype=float)
+    if max_rate <= 0.0:
+        raise ValueError("max_rate must be positive")
 
-#     print(approximate_directional_gradient(cbf_interpolator,test_point,test_input,my_bicycle,step_size=0.1))
+    period = 4.0 * A / np.double(max_rate)
+    t = t - phase*period 
+
+    # Helper: smooth absolute value
+    def smooth_abs(x, A, eps):
+        offset = A/2-np.sqrt((A/2)**2 + eps**2)
+        return np.sqrt(x**2 + eps**2) + offset
+    
+    half_period_counter = np.floor(t/(0.5*period))
+
+    # Compute the smoothed triangle core
+    y = 0.5*triangular_wave(t, max_rate=max_rate, amplitude=amplitude)  
+    if half_period_counter % 2 == 0: # even half-periods
+        tri = A - 2 * smooth_abs(y, A, smoothness)  # replace abs(y) with smooth version
+    else:  # odd half-periods
+        tri = -A + 2 * smooth_abs(y, A, smoothness)  # replace abs(y) with smooth version
+    
+    result = tri
+
+    if np.ndim(t) == 0:
+        return float(result)
+    return result

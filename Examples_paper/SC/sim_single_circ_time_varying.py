@@ -25,9 +25,9 @@ from tqdm import tqdm
 ########################################################################################
 # some parameters
 
-cbf_module_filename_s1 = "2025-03-22_19-14-36_s1_cbfm.json"
-cbf_module_filename_s2 = "2025-03-24_17-33-42_s2_cbfm.json"
-cbf_module_filename_d = "2025-03-22_22-04-23_d2_cbfm.json"
+cbf_module_filename_s1 = "2025-11-11_04-41-38_s1_cbfm.json"
+cbf_module_filename_s2 = "2025-11-11_04-42-51_s2_cbfm.json"
+cbf_module_filename_d = "2025-06-18_14-44-06_d1_cbfm.json"
 
 cbf_module_folder_path = r'Examples_paper\SC\Data'
 
@@ -75,6 +75,15 @@ dintegrator_cbf_module_d.load(cbf_module_filename_d, cbf_module_folder_path)
 my_dintegrator_d = dintegrator_cbf_module_d.dynamics
 
 ########################################################################################
+# cbf preprocessing for cbf 2
+
+#iterate over indices of cbf grid points
+idym = (len(sintegrator_cbf_module_s2.cbf.cbf_values[1])-1)//2
+for idx in range(len(sintegrator_cbf_module_s2.cbf.cbf_values[0])):
+    for idy in range(1,idym+1):
+        sintegrator_cbf_module_s2.cbf.cbf_values[idx][idym-idy] = sintegrator_cbf_module_s2.cbf.cbf_values[idx][idym+idy]
+
+########################################################################################
 # Setup system and controller for simulation
 
 def alpha(b, c=1, gamma=1):
@@ -107,10 +116,10 @@ controller_settings_s1 = {}
 controller_settings_s1['cbf_grid_points'] = sintegrator_cbf_module_s1.cbf.getCbfGridPoints()
 controller_settings_s1['cbf_interpolator'] = cbf_interpolator_s1
 controller_settings_s1['alpha'] = lambda b: alpha(b, c=2, gamma=sintegrator_cbf_module_s1.gamma)
-controller_settings_s1['alpha_offset'] = 0.2
+controller_settings_s1['alpha_offset'] = 0.1
 controller_settings_s1['dynamics'] = my_sintegrator_s1
 controller_settings_s1['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/15) - 0.5)
-controller_settings_s1['dt'] = 0.5
+controller_settings_s1['dt'] = 0.1
 controller_settings_s1['step_size'] = 0.5
 
 # Controller settings single integrator 2
@@ -121,10 +130,10 @@ controller_settings_s2 = {}
 controller_settings_s2['cbf_grid_points'] = sintegrator_cbf_module_s2.cbf.getCbfGridPoints()
 controller_settings_s2['cbf_interpolator'] = cbf_interpolator_s2
 controller_settings_s2['alpha'] = lambda b: alpha(b, c=2, gamma=sintegrator_cbf_module_s2.gamma)
-controller_settings_s2['alpha_offset'] = 0.2
+controller_settings_s2['alpha_offset'] = 0.1
 controller_settings_s2['dynamics'] = my_sintegrator_s2
 controller_settings_s2['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/15) - 0.5) 
-controller_settings_s2['dt'] = 0.5
+controller_settings_s2['dt'] = 0.1
 controller_settings_s2['step_size'] = 0.5
 
 # Controller settings double integrator
@@ -134,8 +143,8 @@ controller_settings_d = {}
 
 controller_settings_d['cbf_grid_points'] = dintegrator_cbf_module_d.cbf.getCbfGridPoints()
 controller_settings_d['cbf_interpolator'] = cbf_interpolator_d
-controller_settings_d['alpha'] = lambda b: alpha(b, c=0.5, gamma=dintegrator_cbf_module_d.gamma)
-controller_settings_d['alpha_offset'] = 0.2
+controller_settings_d['alpha'] = lambda b: alpha(b, c=1.0, gamma=dintegrator_cbf_module_d.gamma)
+controller_settings_d['alpha_offset'] = 0.1
 controller_settings_d['dynamics'] = my_dintegrator_d
 controller_settings_d['lambda_fun'] = lambda t: -2 - 10*2*(aux_math.sigmoid(t/20) - 0.5)
 controller_settings_d['dt'] = 0.1
@@ -333,7 +342,7 @@ for i in tqdm(range(0,len(my_dintegrator_d.t_sol),data_steps), desc="Creating fr
     # Add current time to the upper right corner
     ax.text(0.95, 0.95, f"t = {my_dintegrator_d.t_sol[i]:.2f}", transform=ax.transAxes, ha='right', va='top')
 
-    ax.legend(loc='lower left')
+    # ax.legend(loc='upper left')
 
     # Save the current frame
     frame_path = os.path.join(frames_dir, f"frame_{i:04d}.png")
